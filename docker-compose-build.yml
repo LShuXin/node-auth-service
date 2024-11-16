@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  node_auth_server:
+    image: 1569663570/node_auth_server
+    build:
+      context: .
+      dockerfile: node_auth_server/Dockerfile
+    restart: always
+    container_name: node_auth_server
+    hostname: node_auth_server
+    networks:
+      bigtalk:
+        ipv4_address: 6.1.0.3
+    ports:
+      - 3000:3000
+    environment:
+      TZ: Asia/Shanghai
+    extra_hosts:
+      - "mongodb_server:6.1.0.2"
+
+  mongodb_server:
+    image: mongo:8.0.3-noble
+    restart: always
+    command: mongod --config /etc/mongo/mongod.conf --auth
+    container_name: mongodb_server
+    hostname: mongodb_server
+    volumes: 
+      - ./mongodb_storage/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./mongodb_storage/configdb:/data/configdb
+      - ./mongodb_storage/data:/data/db
+      - ./mongodb_storage/mongod.conf:/etc/mongo/mongod.conf
+    networks:
+      bigtalk:
+        ipv4_address: 6.1.0.2
+    ports:
+      - 27017:27017
+    environment:
+      TZ: Asia/Shanghai
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: auth
+    extra_hosts:
+      - "node_auth_server:6.1.0.3"
+
+volumes:
+  mongodb_data:
+
+networks:
+  bigtalk:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 6.1.0.0/16
+          gateway: 6.1.0.1
