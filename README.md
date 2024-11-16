@@ -1,6 +1,6 @@
 <!--
  * @LastEditors: liushuxin
- * @LastEditTime: 2024-11-17 02:52:22
+ * @LastEditTime: 2024-11-17 02:57:41
  * @FilePath: /node-auth-service/README.md
  * @Description: 
  * 
@@ -23,7 +23,7 @@ The API documentation is hosted on [Postman Doc](https://web.postman.co/workspac
 ### Step 1: Clone Or Download This Repository To Your Machine
 
 ```bash
-git clone https://github.com/bytesfield/node-auth-service.git
+git clone https://github.com/LShuXin/node-auth-service.git
 ```
 
 ### Step2: Customize Your Config
