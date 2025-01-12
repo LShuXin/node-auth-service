@@ -1,20 +1,28 @@
-<!--
- * @LastEditors: liushuxin
- * @LastEditTime: 2024-11-17 02:57:41
- * @FilePath: /node-auth-service/README.md
- * @Description: 
- * 
- * Copyright (c) 2024 by liushuxina@gmail.com All Rights Reserved. 
--->
 # Node-Auth-Service
 
-A Simple Token-Based User Authentication Service using JWT in Node JS and MongoDB. The origin project: [node-auth-service](https://github.com/bytesfield/node-auth-service)
+A Simple Token-Based User Authentication Service using JWT in Node JS and MongoDB.
 
 ## Description
 
 With this you can quickly craft a token-based user authentication system using JWT and continue your project implementation. This comes with `User Registration`, `Email Verification`, `Login`, `Password Reset`, `Account Deletion`, `Logout`.
 
 ## Documentation
+
+### Interfaces Provided by the Authorization Service
+
+**Account Registration**
+Provides account registration services. After successful registration, an email will be sent to the user's mailbox. The user needs to click the link in the email to activate the account.
+
+**Account Login**
+After successful account registration, the user needs to click the link in the email to activate the account. Only after activation can the user log in using the account credentials.
+
+**Logout (Requires Authentication)**
+
+**Account Deletion (Requires Authentication)**
+
+**Request Password Reset Email**
+
+**Reset Password**
 
 The API documentation is hosted on [Postman Doc](https://web.postman.co/workspace/node_auth_service~20925a35-af08-4784-ae18-b50cb29af11d/overview)
 
@@ -30,7 +38,9 @@ git clone https://github.com/LShuXin/node-auth-service.git
 
 Update Environment variables, rename `.env.example` to `.env` and `secrets.json.example` in `config` folder to `secrets.json`, then update `MDB_DATABASE_CONNECT` value to your MongoDB database connection and update `APP_PORT` to your desired port default is `3000`, also `APP_ENV` to `production` or `test` depending on your environment default is `test`.
 
-For email configuration on `.env` or `secrets.json` files, update the `EMAIL` **or** `MAILGUN` credentials respectively depending on your mailing service. When using mailgun, export the `mailgunService` from the `nodemailer.js` in the `config` folder, while `emailService` if you are using a normal mailing service and pass the required parameters for sending mail.
+For email configuration on `.env` or `secrets.json` files, update the `EMAIL` **or** `MAILGUN` credentials respectively depending on your mailing service. 
+
+When using mailgun, export the `mailgunService` from the `nodemailer.js` in the `config` folder, while `emailService` if you are using a normal mailing service and pass the required parameters for sending mail.
 
 Lastly update `JWT_SECRET` and `COOKIE_SESSION_SECRET` to your desired values.
 
@@ -48,7 +58,7 @@ sudo docker-compose -f "docker-compose-run.yml" up -d
 
 ### Step 4
 
-Open Postman run the Api endpoints. Documentation can be accessed below
+Open Postman run the Api endpoints.
 
 Note: Use active emails for testing as you will receive emails to your inbox.
 
@@ -115,6 +125,9 @@ test>
 - [nodemailer](https://www.nodemailer.com/)
 - [Mailgun](https://www.mailgun.com/)
 
+# Links
+
+- [node-auth-service](https://github.com/bytesfield/node-auth-service)
 
 # License
 
