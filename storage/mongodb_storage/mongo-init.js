@@ -1,6 +1,16 @@
+/*
+ * @Author: liushuxin admin@example.com
+ * @Date: 2025-01-11 18:43:52
+ * @LastEditors: liushuxin admin@example.com
+ * @LastEditTime: 2025-05-05 15:18:26
+ * @FilePath: /node-auth-service/mongodb_storage/mongo-init.js
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved. 
+ */
 const dbName = 'auth';
-const username = 'bigtalkapp';
-const password = 'bigtalkapp';
+const username = 'auth';
+const password = 'auth';
 const roles = [
   {
     role: 'readWrite', 

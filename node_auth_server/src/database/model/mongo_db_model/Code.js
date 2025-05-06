@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 const secretCode = new Schema({
   email: {
@@ -13,11 +13,11 @@ const secretCode = new Schema({
   dateCreated: {
     type: Date,
     default: Date.now(),
+    // seconds
     expires: 600,
   },
 });
 
-//Model
-const Code = mongoose.model("Code", secretCode);
+const Code = mongoose.model('Code', secretCode);
 
 module.exports = Code;

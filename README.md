@@ -1,6 +1,8 @@
 # Node-Auth-Service
 
-A Simple Token-Based User Authentication Service using JWT in Node JS and MongoDB.
+[TOC]
+
+A Simple Token-Based User Authentication Service using JWT in Node JS and MongoDB/MySql.
 
 ## Description
 
@@ -8,23 +10,277 @@ With this you can quickly craft a token-based user authentication system using J
 
 ## Documentation
 
-### Interfaces Provided by the Authorization Service
+### Registration (Manual Activation)
 
-**Account Registration**
-Provides account registration services. After successful registration, an email will be sent to the user's mailbox. The user needs to click the link in the email to activate the account.
+#### Call the registration endpoint to receive an activation email
 
-**Account Login**
-After successful account registration, the user needs to click the link in the email to activate the account. Only after activation can the user log in using the account credentials.
+- Request
 
-**Logout (Requires Authentication)**
+```bash
+curl --location 'localhost:3000/api/auth/register' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0Tm1ReU4yTmlNVGt5WlRBd01XVXdOREUwWmpBaUxDSnBZWFFpT2pFM05EWTBNekV5TnpFc0ltVjRjQ0k2TVRjME56WTBNRGczTVgwLkdMWFMtQzAwS3MwZmozSjFSTWE1RDgyLUVIQ0I4b3FTVWEyNnNJY1hERVEifQ==; express:sess.sig=v7upEp-Mt0lDM-ApPnx1iS21b8I' \
+--data-raw '{
+    "firstName" : "Simon",
+    "lastName" : "Liu",
+    "email" : "17853314162@163.com",
+    "password" : "Password@123",
+    "confirmPassword" : "Password@123"
+}'
+```
 
-**Account Deletion (Requires Authentication)**
+- Response
 
-**Request Password Reset Email**
+```json
+{
+  "status": "Success",
+  "statusCode": 200,
+  "message": "Registration Successful, Check Email for Activation Link"
+}
+```
 
-**Reset Password**
+#### Activate your account via the email link
 
-The API documentation is hosted on [Postman Doc](https://web.postman.co/workspace/node_auth_service~20925a35-af08-4784-ae18-b50cb29af11d/overview)
+You will receive an email containing a link like this:
+
+```bash
+http://localhost:3000/api/auth/verification/verify-account/68186d27cb192e001e0414f0/55ed1e
+```
+
+Note: You must activate your account before logging in.
+
+### Resend Activation Code
+
+If the activation code has expired, you can request a new one. This request requires a valid token.
+
+- Request
+
+```bash
+curl --location --request GET 'localhost:3000/api/auth/verification/get-activation-email' \
+--header 'auth-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE4NzY4OTgyZjUzYzAwMWU0ZGNlZWEiLCJpYXQiOjE3NDY0MzM5MjgsImV4cCI6MTc0NzY0MzUyOH0.-hj9GcTvScHGcOqZzuPX5mMDl2R5RocaNljt3_VKc64' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0TnpZNE9UZ3laalV6WXpBd01XVTBaR05sWldFaUxDSnBZWFFpT2pFM05EWTBNek0yTnpNc0ltVjRjQ0k2TVRjME56WTBNekkzTTMwLnNMajJkN0xmM012Y1lqMWpRRnAzX2N3VVBYWUx0VkRMY3VjcDhlaWl0UjQifQ==; express:sess.sig=HWfN6H0-pbKQkrE8wMOWuZcw98w' \
+--data '{
+    "user": {
+        "id": "68186d27cb192e001e0414f0"
+    }
+}'
+```
+
+- Response
+
+```json
+{ 
+  "status": "Success",
+  "statusCode": 200,
+  "message": "Successful, Check Email for Activation Link"
+}
+```
+
+### Registration (Auto Activation)
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/register' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0TnpZNE9UZ3laalV6WXpBd01XVTBaR05sWldFaUxDSnBZWFFpT2pFM05EWTBNek0yTnpNc0ltVjRjQ0k2TVRjME56WTBNekkzTTMwLnNMajJkN0xmM012Y1lqMWpRRnAzX2N3VVBYWUx0VkRMY3VjcDhlaWl0UjQifQ==; express:sess.sig=HWfN6H0-pbKQkrE8wMOWuZcw98w' \
+--data-raw '{
+    "firstName" : "Simon",
+    "lastName" : "Liu",
+    "email" : "17853314162@163.com",
+    "password" : "Password@123",
+    "confirmPassword" : "Password@123",
+    "autoActivate": true
+}'
+```
+
+- Response
+
+```json
+{
+  "status": "Success",
+  "statusCode": 200,
+  "message": "Account Activated you can proceed to login"
+}
+```
+
+### Login
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/login' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0TnpZNE9UZ3laalV6WXpBd01XVTBaR05sWldFaUxDSnBZWFFpT2pFM05EWTBNek0yTnpNc0ltVjRjQ0k2TVRjME56WTBNekkzTTMwLnNMajJkN0xmM012Y1lqMWpRRnAzX2N3VVBYWUx0VkRMY3VjcDhlaWl0UjQifQ==; express:sess.sig=HWfN6H0-pbKQkrE8wMOWuZcw98w' \
+--data-raw '{
+    "email" : "17853314162@163.com",
+    "password" : "Password@123"
+}'
+```
+
+- Response
+
+```json
+{
+  "status": "Success",
+  "statusCode": 200,
+  "message": "Logged in Successfully",
+  "data": [
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE4NzY4OTgyZjUzYzAwMWU0ZGNlZWEiLCJpYXQiOjE3NDY0MzM5MjgsImV4cCI6MTc0NzY0MzUyOH0.-hj9GcTvScHGcOqZzuPX5mMDl2R5RocaNljt3_VKc64"
+    }
+  ]
+}
+```
+
+### Account Activation
+
+This step can also be handled automatically on the server during registration. If manually activating via email:
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/verification/verify-account/68187f59b5522b001e5784c8/4e61ea' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0TjJZMU9XSTFOVEl5WWpBd01XVTFOemcwWXpnaUxDSnBZWFFpT2pFM05EWTBNelU1TWprc0ltVjRjQ0k2TVRjME56WTBOVFV5T1gwLk10OHVKckZ2cVpNVEgyYm9qWjFaVDktOUZBeGNfVDFVWEZOc2I3cC0yUVEifQ==; express:sess.sig=xJNQUt5bqe6VBPxnrufheIKw5gg'
+```
+
+- Response
+
+```json
+{
+  "status": "Success",
+  "statusCode":200,
+  "message": "Account Activated you can proceed to login"
+}
+```
+
+### Password Reset
+
+#### Step 1: Request Verification Code
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/password-reset/get-code' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0TjJZMU9XSTFOVEl5WWpBd01XVTFOemcwWXpnaUxDSnBZWFFpT2pFM05EWTBNelU1TWprc0ltVjRjQ0k2TVRjME56WTBOVFV5T1gwLk10OHVKckZ2cVpNVEgyYm9qWjFaVDktOUZBeGNfVDFVWEZOc2I3cC0yUVEifQ==; express:sess.sig=xJNQUt5bqe6VBPxnrufheIKw5gg' \
+--data-raw '{
+    "email" : "17853314162@163.com"
+}'
+```
+
+- Response
+
+```json
+{
+  "status": "Success",
+  "statusCode": 200,
+  "message": "Password reset code Sent to your registered email"
+}
+
+```
+
+A verification code will be sent to your email. For example: a745d3
+
+#### Step 2: Reset Password Using the Code
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/password-reset/verify' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0T0RReU1UTmlPVFF6WVRBd01XVTNPR0UxTWpRaUxDSnBZWFFpT2pFM05EWTBNemN4TlRNc0ltVjRjQ0k2TVRjME56WTBOamMxTTMwLmxDUDRoZEJNeW1HcHFlTmkwekdGdDZNT2dCRml3YnNDWXpMZWtEVWxUajQifQ==; express:sess.sig=4MUR_EKBd5RnfsEtK5VN9R_K9tY' \
+--data-raw '{
+    "email" : "17853314162@163.com",
+    "code" : "a745d3",
+    "password" : "Password@1234",
+    "confirmPassword" : "Password@1234"
+}'
+
+```
+
+- Response
+
+```json
+{
+   "status": "Success",
+   "statusCode": 200,
+   "message": "Password updated Successfully"
+}
+```
+
+#### Step 3: Login with New Password
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/login' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: express:sess=eyJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpmYVdRaU9pSTJPREU0T0RReU1UTmlPVFF6WVRBd01XVTNPR0UxTWpRaUxDSnBZWFFpT2pFM05EWTBNemN4TlRNc0ltVjRjQ0k2TVRjME56WTBOamMxTTMwLmxDUDRoZEJNeW1HcHFlTmkwekdGdDZNT2dCRml3YnNDWXpMZWtEVWxUajQifQ==; express:sess.sig=4MUR_EKBd5RnfsEtK5VN9R_K9tY' \
+--data-raw '{
+    "email" : "17853314162@163.com",
+    "password" : "Password@1234"
+}'
+```
+
+- Response
+
+```json
+{
+   "status": "Success",
+   "statusCode": 200,
+   "message": "Logged in Successfully",
+   "data": [
+      { "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE4ODQyMTNiOTQzYTAwMWU3OGE1MjQiLCJpYXQiOjE3NDY0MzcyNzksImV4cCI6MTc0NzY0Njg3OX0.bV3EQEj7fbuN0yYkUxyC8LgIWhQ9aPBVTwS5EgBvfrQ"
+      }
+   ]
+}
+```
+
+### Logout
+
+- Request
+
+```bash
+curl --location --request POST 'localhost:3000/api/auth/logout' \
+--header 'auth-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE4ODQyMTNiOTQzYTAwMWU3OGE1MjQiLCJpYXQiOjE3NDY0MzcyNzksImV4cCI6MTc0NzY0Njg3OX0.bV3EQEj7fbuN0yYkUxyC8LgIWhQ9aPBVTwS5EgBvfrQ' \
+--header 'Authorization: Bearer oat_MTc.M0tUcEhuNEhZZmNqTmtZQ29TNFpNT2V1VzRJMEZSeGRVTTZCbldjQzI4MzI1ODMzMTQ'
+```
+
+- Response
+
+```json
+{
+   "status": "Success",
+   "statusCode": 200,
+   "message": "Logout Successfully"
+}
+```
+
+### Deletion
+
+- Request
+
+```bash
+curl --location 'localhost:3000/api/auth/delete-account' \
+--header 'auth-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE4ODQyMTNiOTQzYTAwMWU3OGE1MjQiLCJpYXQiOjE3NDY0Mzc0MjIsImV4cCI6MTc0NzY0NzAyMn0.vUCJfmJdNkt6HK_VDrPcy50etUeTZCqY4pN1wfaqhRo' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer oat_MTc.M0tUcEhuNEhZZmNqTmtZQ29TNFpNT2V1VzRJMEZSeGRVTTZCbldjQzI4MzI1ODMzMTQ' \
+--data-raw '{
+    "password" : "Password@1234"
+}'
+```
+
+- Response
+
+```json
+{
+   "status": "Success",
+   "statusCode": 200,
+   "message": "Account deleted Successfully"
+}
+```
 
 ## How to use
 
@@ -36,24 +292,17 @@ git clone https://github.com/LShuXin/node-auth-service.git
 
 ### Step2: Customize Your Config
 
-Update Environment variables, rename `.env.example` to `.env` and `secrets.json.example` in `config` folder to `secrets.json`, then update `MDB_DATABASE_CONNECT` value to your MongoDB database connection and update `APP_PORT` to your desired port default is `3000`, also `APP_ENV` to `production` or `test` depending on your environment default is `test`.
-
-For email configuration on `.env` or `secrets.json` files, update the `EMAIL` **or** `MAILGUN` credentials respectively depending on your mailing service. 
-
-When using mailgun, export the `mailgunService` from the `nodemailer.js` in the `config` folder, while `emailService` if you are using a normal mailing service and pass the required parameters for sending mail.
-
-Lastly update `JWT_SECRET` and `COOKIE_SESSION_SECRET` to your desired values.
+- Rename `.env.example` to `.env` and `secrets.json.example` in `config` folder to `secrets.json`, update fields in these two files according to the following steps.
+- Set `DB_TYPE = MONGO` or `DB_TYPE = MYSQL`, then update `MDB_DATABASE_CONNECT` or `MYSQL_DATABASE_CONNECT` accordingly. If you prefer `MySql` update `sql.init` accoudingly.
+- Set `APP_NAME`, `APP_URL`, `APP_ENV`, `APP_PORT`, `APP_NAME` and `APP_URL` will be used to render email teamplate.
+- Set `EMAIL_TYPE = NORMAL` or `EMAIL_TYPE = MAILGUN`, then update `EMAIL_*` or `MAILGUN_*` accordingly.
+- Set `JWT_SECRET` and `COOKIE_SESSION_SECRET`
 
 ### Step3: Build Docker Image & RUN
 
 ```bash
 sudo docker-compose -f "docker-compose-build.yml" up -d --build
-```
-
-*How To Run Exists Docker Image*
-
-```bash
-sudo docker-compose -f "docker-compose-run.yml" up -d
+// sudo docker-compose -f "docker-compose-run.yml" up -d
 ```
 
 ### Step 4
@@ -119,18 +368,16 @@ test>
 
 ```
 
-# Thired Party Packages
+## Thired Party Packages
 
 - [cookie-session](https://github.com/expressjs/cookie-session)
 - [nodemailer](https://www.nodemailer.com/)
 - [Mailgun](https://www.mailgun.com/)
 
-# Links
+## Links
 
 - [node-auth-service](https://github.com/bytesfield/node-auth-service)
 
-# License
+## License
 
 Source codes is license under the MIT license
-
-

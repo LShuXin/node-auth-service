@@ -1,2 +1,3 @@
-/mongodb_storage/data
-/mongodb_storage/configdb
+/storage/mongodb_storage/data
+/storage/mongodb_storage/configdb
+/storage/mariadb/data

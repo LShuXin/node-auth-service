@@ -1,12 +1,5 @@
-/*
- * @LastEditors: liushuxin
- * @LastEditTime: 2024-11-17 01:29:29
- * @FilePath: /node-auth-service/node_auth_server/src/database/factories/CodeFactory.js
- * @Description: 
- * 
- * Copyright (c) 2024 by liushuxina@gmail.com All Rights Reserved. 
- */
-const authRepository = require("../../app/http/repositories/AuthRepository");
+// for test usage
+const authRepository = require("../../src/app/http/repositories/AuthRepository");
 const cryptoRandomString = require("crypto-random-string");
 
 class CodeFactory {
