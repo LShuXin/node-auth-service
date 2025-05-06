@@ -1,8 +1,8 @@
-const { httpStatus } = require("../../../config/status");
-const { httpErrors } = require("../../../config/errors");
+const { httpStatus } = require('../../../config/status');
+const { httpErrors } = require('../../../config/errors');
 
 const handleValidationError = (error, req, res, next) => {
-  if (error.name === "ValidationError") {
+  if (error.name === 'ValidationError') {
     return res.status(httpStatus.VALIDATION_ERROR).json({
       type: error.name,
       status: httpStatus.VALIDATION_ERROR,
@@ -13,7 +13,7 @@ const handleValidationError = (error, req, res, next) => {
   next(error);
 };
 const handleTypeError = (error, req, res, next) => {
-  if (error.name === "TypeError") {
+  if (error.name === 'TypeError') {
     return res.status(httpStatus.BAD_REQUEST).json({
       type: error.name,
       status: httpStatus.BAD_REQUEST,
@@ -25,7 +25,7 @@ const handleTypeError = (error, req, res, next) => {
 };
 
 const handleSyntaxError = (error, req, res, next) => {
-  if (error.name === "SyntaxError") {
+  if (error.name === 'SyntaxError') {
     return res.status(httpStatus.UNPROCESSIBLE_ENTITY).json({
       type: error.name,
       status: httpStatus.UNPROCESSIBLE_ENTITY,
@@ -37,7 +37,7 @@ const handleSyntaxError = (error, req, res, next) => {
 };
 
 const handleReferenceError = (error, req, res, next) => {
-  if (error.name === "ReferenceError") {
+  if (error.name === 'ReferenceError') {
     return res.status(httpStatus.BAD_REQUEST).json({
       type: error.name,
       status: httpStatus.BAD_REQUEST,
@@ -49,7 +49,7 @@ const handleReferenceError = (error, req, res, next) => {
 };
 
 const handleNotFoundError = (error, req, res, next) => {
-  if (error.name === "NotFoundError") {
+  if (error.name === 'NotFoundError') {
     return res.status(httpStatus.NOT_FOUND).json({
       type: error.name,
       status: httpStatus.NOT_FOUND,
@@ -61,18 +61,18 @@ const handleNotFoundError = (error, req, res, next) => {
 };
 
 const handleDatabaseError = (error, req, res, next) => {
-  if (error.name === "MongoError") {
+  if (error.name === 'MongoError') {
     if (error.code === 11000) {
       return res.status(httpStatus.CONFLICT).json({
         status: httpStatus.CONFLICT,
-        type: "MongoError",
+        type: 'MongoError',
         message: httpErrors.CONFLICT,
         error: error.message,
       });
     } else {
       return res.status(httpStatus.SERVICE_UNAVAILABLE).json({
         httpStatus: httpStatus.SERVICE_UNAVAILABLE,
-        type: "MongoError",
+        type: 'MongoError',
         message: httpErrors.SERVICE_UNAVAILABLE,
         error: error.message,
       });

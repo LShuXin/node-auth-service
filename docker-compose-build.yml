@@ -1,23 +1,26 @@
 version: "3.8"
 
 services:
-  node_auth_server:
-    image: 1569663570/node_auth_server
-    build:
-      context: .
-      dockerfile: node_auth_server/Dockerfile
+  mariadb_server:
+    image: library/mariadb:10.7.1
     restart: always
-    container_name: node_auth_server
-    hostname: node_auth_server
+    container_name: mariadb_server
+    hostname: mariadb_server
+    volumes:
+      - ./storage/mariadb/data:/var/lib/mysql
+      - ./storage/mariadb/conf/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      bigtalk:
-        ipv4_address: 6.1.0.3
+      internal:
+        ipv4_address: 6.1.0.2
     ports:
-      - 3000:3000
+      - 3306:3306
     environment:
       TZ: Asia/Shanghai
-    extra_hosts:
-      - "mongodb_server:6.1.0.2"
+      BIND: 0.0.0.0
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: auth
+      MARIADB_USER: auth
+      MARIADB_PASSWORD: auth
 
   mongodb_server:
     image: mongo:8.0.3-noble
@@ -26,13 +29,13 @@ services:
     container_name: mongodb_server
     hostname: mongodb_server
     volumes: 
-      - ./mongodb_storage/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-      - ./mongodb_storage/configdb:/data/configdb
-      - ./mongodb_storage/data:/data/db
-      - ./mongodb_storage/mongod.conf:/etc/mongo/mongod.conf
+      - ./storage/mongodb_storage/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./storage/mongodb_storage/configdb:/data/configdb
+      - ./storage/mongodb_storage/data:/data/db
+      - ./storage/mongodb_storage/mongod.conf:/etc/mongo/mongod.conf
     networks:
-      bigtalk:
-        ipv4_address: 6.1.0.2
+      internal:
+        ipv4_address: 6.1.0.3
     ports:
       - 27017:27017
     environment:
@@ -40,14 +43,27 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
       MONGO_INITDB_DATABASE: auth
-    extra_hosts:
-      - "node_auth_server:6.1.0.3"
 
-volumes:
-  mongodb_data:
+  node_auth_server:
+    image: node_auth_server
+    build:
+      context: .
+      dockerfile: node_auth_server/Dockerfile
+    restart: always
+    container_name: node_auth_server
+    hostname: node_auth_server
+    networks:
+      internal:
+        ipv4_address: 6.1.0.4
+    ports:
+      - 3000:3000
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      - mariadb_server
 
 networks:
-  bigtalk:
+  internal:
     driver: bridge
     ipam:
       config:

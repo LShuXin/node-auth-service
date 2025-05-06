@@ -1,38 +1,40 @@
 /*
- * @LastEditors: liushuxin
- * @LastEditTime: 2024-11-17 02:23:23
+ * @LastEditors: liushuxin admin@example.com
+ * @LastEditTime: 2025-05-05 14:56:22
  * @FilePath: /node-auth-service/node_auth_server/index.js
  * @Description:
  *
  * Copyright (c) 2024 by liushuxina@gmail.com All Rights Reserved.
  */
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const compression = require("compression");
-const csurf = require("csurf");
-const authApiRoutes = require("./src/routes/AuthRoutes");
-const exception = require("./src/app/http/middlewares/Exception");
-const cookieSession = require("cookie-session");
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const compression = require('compression');
+const csurf = require('csurf');
+const authApiRoutes = require('./src/routes/AuthRoutes');
+const exception = require('./src/app/http/middlewares/Exception');
+const cookieSession = require('cookie-session');
+const { connect } = require('./src/database/connection/index');
 
 dotenv.config();
 
-if (process.env.APP_ENV == "production") {
+let secrets, port;
+if ('production' === process.env.APP_ENV) {
   secrets = process.env;
   port = process.env.APP_PORT;
 } else {
-  secrets = require("./src/config/secrets");
+  secrets = require('./src/config/secrets');
   port = secrets.APP_PORT;
 }
 
 // Database Connection
-require("./src/config/MongoDbConnection");
+connect();
 
 // Declare our Express App
 const app = express();
 
 // Register View Engine
-// app.set("view engine", "ejs");
+// app.set('view engine', 'ejs');
 
 // #Middleware
 app.use(express.json()); // support json encoded bodies
@@ -56,17 +58,17 @@ app.use(
 );
 
 // #CSRF security for Production
-if (process.env.NODE_ENV == "production") {
+if (process.env.NODE_ENV == 'production') {
   app.use(csurf());
   app.use((req, res, next) => {
-    res.set("x-frame-options", "DENY");
-    res.cookie("mytoken", req.csrfToken());
+    res.set('x-frame-options', 'DENY');
+    res.cookie('mytoken', req.csrfToken());
     next();
   });
 }
 
 //Auth APi
-app.use("/api/auth", authApiRoutes);
+app.use('/api/auth', authApiRoutes);
 
 //Exception Handlers Middleware
 app.use(exception.handleValidationError);

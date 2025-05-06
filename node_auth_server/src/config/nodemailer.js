@@ -1,19 +1,19 @@
 /*
- * @LastEditors: liushuxin
- * @LastEditTime: 2024-11-17 01:28:11
+ * @LastEditors: liushuxin admin@example.com
+ * @LastEditTime: 2025-05-05 14:51:03
  * @FilePath: /node-auth-service/node_auth_server/src/config/nodemailer.js
  * @Description:
  *
  * Copyright (c) 2024 by liushuxina@gmail.com All Rights Reserved.
  */
-const nodemailer = require("nodemailer");
-const mg = require("nodemailer-mailgun-transport");
+const nodemailer = require('nodemailer');
+const mg = require('nodemailer-mailgun-transport');
 
 let secrets;
-if (process.env.APP_ENV == "production") {
+if ('production' === process.env.APP_ENV) {
   secrets = process.env;
 } else {
-  secrets = require("./secrets");
+  secrets = require('./secrets');
 }
 
 const mailgunAuth = {

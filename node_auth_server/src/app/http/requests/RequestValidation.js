@@ -1,12 +1,12 @@
 /*
- * @LastEditors: liushuxin
- * @LastEditTime: 2024-11-17 01:08:02
+ * @LastEditors: liushuxin admin@example.com
+ * @LastEditTime: 2025-05-05 16:20:23
  * @FilePath: /node-auth-service/node_auth_server/src/app/http/requests/RequestValidation.js
  * @Description: 
  * 
  * Copyright (c) 2024 by liushuxina@gmail.com All Rights Reserved. 
  */
-const Joi = require("joi");
+const Joi = require('joi');
 
 //Register Validation
 const registerValidation = (data) => {
@@ -18,8 +18,9 @@ const registerValidation = (data) => {
       .min(6)
       //.pattern(new RegExp('^[a-zA-Z0-9]{3,30}$'))
       .required(),
-    confirmPassword: Joi.ref("password"),
-  }).with("password", "confirmPassword");
+    confirmPassword: Joi.ref('password'),
+    autoActivate: Joi.boolean().default(false)
+  }).with('password', 'confirmPassword');
 
   return registerSchema.validate(data);
 };
@@ -55,8 +56,8 @@ const passwordResetValidation = (data) => {
     email: Joi.string().min(6).required().email(),
     code: Joi.required(),
     password: Joi.string().min(6).required(),
-    confirmPassword: Joi.ref("password"),
-  }).with("password", "confirmPassword");
+    confirmPassword: Joi.ref('password'),
+  }).with('password', 'confirmPassword');
 
   return passwordResetSchema.validate(data);
 };

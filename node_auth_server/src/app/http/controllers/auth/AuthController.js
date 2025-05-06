@@ -1,13 +1,11 @@
-const path = require("path");
-const ejs = require("ejs");
-const cryptoRandomString = require("crypto-random-string");
-const User = require("../../../../database/models/User");
-const Code = require("../../../../database/models/Code");
-const JsonResponse = require("../../../modules/JsonResponse");
-const Helpers = require("../../../modules/Helpers");
-const requestValidation = require("../../requests/RequestValidation");
-const { httpStatus } = require("../../../../config/status");
-const authRepository = require("../../repositories/AuthRepository");
+const path = require('path');
+const ejs = require('ejs');
+const cryptoRandomString = require('crypto-random-string');
+const JsonResponse = require('../../../modules/JsonResponse');
+const Helpers = require('../../../modules/Helpers');
+const requestValidation = require('../../requests/RequestValidation');
+const { httpStatus } = require('../../../../config/status');
+const authRepository = require('../../repositories/AuthRepository');
 
 let jsonResponse = new JsonResponse();
 let helpers = new Helpers();
@@ -16,20 +14,13 @@ const signTokenExpiry = {
   expiresIn: 60 * 60 * 24 * 14,
 };
 
-/**
- * User Registration
- * @param {object} req
- * @param {object} res
- *
- * @returns {object} User
- */
-const register = async (req, res, next) => {
+const register = async (req, res, _next) => {
   const firstName = req.body.firstName;
   const lastName = req.body.lastName;
   const email = req.body.email;
   const password = req.body.password;
+  const autoActivate = req.body.autoActivate || false;
 
-  // Validate request
   const { error } = requestValidation.registerValidation(req.body);
 
   if (error) {
@@ -37,13 +28,12 @@ const register = async (req, res, next) => {
       .status(httpStatus.VALIDATION_ERROR)
       .send(
         jsonResponse.failedValidation(
-          "Failed Validation",
+          'Failed Validation',
           error.details[0].message
         )
       );
   }
 
-  // Validate Password
   const validPassword = helpers.validatePassword(password);
 
   if (!validPassword) {
@@ -51,22 +41,20 @@ const register = async (req, res, next) => {
       .status(httpStatus.VALIDATION_ERROR)
       .send(
         jsonResponse.failedValidation(
-          "Password must be at least 6 characters, a lowercase and uppercase letter, a numeric and special character."
+          'Password must be at least 6 characters, a lowercase and uppercase letter, a numeric and special character.'
         )
       );
   }
 
   try {
-    // Check Email Exist
     const emailExist = await authRepository.getUserByEmail(email);
 
     if (emailExist) {
       return res
         .status(httpStatus.CONFLICT)
-        .send(jsonResponse.error("Email already exist"));
+        .send(jsonResponse.error('Email already exist'));
     }
 
-    //Hash Password
     const hashedPassword = await authRepository.hashPassword(password);
 
     const payload = {
@@ -76,11 +64,9 @@ const register = async (req, res, next) => {
       password: hashedPassword,
     };
 
-    //Saves user to database
     const user = await authRepository.createUser(payload);
-    const user_id = user._id;
+    const user_id = user.id;
 
-    //Create Token
     const signTokenData = {
       _id: user_id,
     };
@@ -94,8 +80,6 @@ const register = async (req, res, next) => {
     );
     req.session.token = token;
 
-    const baseUrl = req.protocol + "://" + req.get("host");
-
     const secretCode = cryptoRandomString({
       length: 6,
     });
@@ -104,53 +88,76 @@ const register = async (req, res, next) => {
       code: secretCode,
       email: user.email,
     };
-    // Create Code
-    const code = await authRepository.createCode(codePayload);
-    const emailFrom = `${res.locals.secrets.APP_NAME} <${res.locals.secrets.EMAIL_USERNAME}>`;
-    const emailTo = user.email;
-    const emailSubject = "Your Activation Link for YOUR APP";
-    // get the absolute path to the view template with the file extension specified.
-    const emailVerificationPath = path.resolve(
-      "./src/views/email/auth/emailVerification.ejs"
-    );
-    const html = await ejs.renderFile(emailVerificationPath, {
-      baseUrl: baseUrl,
-      userId: user_id,
-      secretCode: secretCode,
-    });
 
-    //Send Verification Email
-    await authRepository.sendEmail(emailFrom, emailTo, emailSubject, html);
+    await authRepository.createCode(codePayload);
 
-    return res
-      .status(httpStatus.OK)
-      .send(
-        jsonResponse.success(
-          "Registration Successful, Check Email for Activation Link",
-          user
-        )
+    if (autoActivate) {
+      const user = await authRepository.getUserById(user_id);
+      if (!user) {
+        return res
+          .status(httpStatus.NOT_FOUND)
+          .send(jsonResponse.error('User not found during activation'));
+      }
+  
+      const response = await authRepository.getCodeByEmailAndCode(user.email, secretCode);
+      if (!response) {
+        return res
+          .status(httpStatus.FORBIDDEN)
+          .send(
+            jsonResponse.forbidden('Activation Link is expired or used already')
+          );
+      }
+      const activateUser = await authRepository.updateUserByEmail(user.email, { status: 'active' });
+      const deleteUserCode = await authRepository.deleteCodeByEmail(user.email);
+      if (activateUser && deleteUserCode) {
+        return res
+          .status(httpStatus.OK)
+          .send(
+            jsonResponse.success('Account Activated you can proceed to login')
+          );
+      }
+      return res
+        .status(httpStatus.CONFLICT)
+        .send(jsonResponse.error('Something went wrong'));
+    } else {
+      const emailFrom = `${res.locals.secrets.APP_NAME} <${res.locals.secrets.EMAIL_USERNAME}>`;
+      const emailTo = user.email;
+      const emailSubject = 'Your Activation Link for YOUR APP';
+      // get the absolute path to the view template with the file extension specified.
+      const emailVerificationPath = path.resolve(
+        './src/views/email/auth/emailVerification.ejs'
       );
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const html = await ejs.renderFile(emailVerificationPath, {
+        baseUrl: baseUrl,
+        userId: user_id,
+        secretCode: secretCode,
+      });
+  
+      //Send Verification Email
+      await authRepository.sendEmail(emailFrom, emailTo, emailSubject, html);
+  
+      return res
+        .status(httpStatus.OK)
+        .send(
+          jsonResponse.success(
+            'Registration Successful, Check Email for Activation Link',
+            user
+          )
+        );
+    }
   } catch (err) {
-    console.log("Error on /api/auth/register: ", err);
-
+    console.log('Error on /api/auth/register: ', err);
     res
       .status(httpStatus.CONFLICT)
-      .send(jsonResponse.error("Error occured", err));
+      .send(jsonResponse.error('Error occured', err));
   }
 };
 
-/**
- * User Login
- * @param {object} req
- * @param {object} res
- *
- * @returns {string} token
- */
 const login = async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  // Validate request
   const { error } = requestValidation.loginValidation(req.body);
 
   if (error) {
@@ -158,7 +165,7 @@ const login = async (req, res) => {
       .status(httpStatus.VALIDATION_ERROR)
       .send(
         jsonResponse.failedValidation(
-          "Failed Validation",
+          'Failed Validation',
           error.details[0].message
         )
       );
@@ -166,16 +173,14 @@ const login = async (req, res) => {
 
   const user = await authRepository.getUserByEmail(email);
 
-  //Check User Exist
   if (!user) {
     return res
       .status(httpStatus.CONFLICT)
-      .send(jsonResponse.error("Email or password is wrong"));
+      .send(jsonResponse.error('Email or password is wrong'));
   }
 
   const userStatus = user.status;
 
-  //Check if password is correct
   const isValidPassword = await authRepository.validPassword(
     password,
     user.password
@@ -183,21 +188,21 @@ const login = async (req, res) => {
   if (!isValidPassword) {
     return res
       .status(httpStatus.CONFLICT)
-      .send(jsonResponse.error("Invalid Email or Password"));
+      .send(jsonResponse.error('Invalid Email or Password'));
   }
 
-  if (userStatus != "active") {
+  if (userStatus != 'active') {
     return res
       .status(httpStatus.UNAUTHORIZED)
       .send(
         jsonResponse.unauthorized(
-          "User Account not active, please activate account"
+          'User Account not active, please activate account'
         )
       );
   }
 
   const signTokenData = {
-    _id: user._id,
+    _id: user.id,
   };
 
   //Create and assign token
@@ -213,31 +218,22 @@ const login = async (req, res) => {
     },
   ];
   res
-    .header("auth-token", token)
-    .send(jsonResponse.success("Logged in Successfully", tokenData));
+    .header('auth-token', token)
+    .send(jsonResponse.success('Logged in Successfully', tokenData));
 };
 
-/**
- * User Get Activation Email
- * @param {object} req
- * @param {object} res
- *
- * @returns {object} User
- */
-
 const getActivationEmail = async (req, res) => {
-  const baseUrl = req.protocol + "://" + req.get("host");
+  const baseUrl = req.protocol + '://' + req.get('host');
 
   try {
-    const userId = req.user._id;
+    const userId = req.body.user.id;
     const user = await authRepository.getUserById(userId);
-
     if (!user) {
       return res
         .status(httpStatus.NOT_FOUND)
-        .send(jsonResponse.error("User not found"));
+        .send(jsonResponse.error('User not found'));
     }
-    await Code.deleteMany({ email: user.email });
+    await authRepository.deleteCodeByEmail(user.email)
 
     const secretCode = cryptoRandomString({
       length: 6,
@@ -252,101 +248,78 @@ const getActivationEmail = async (req, res) => {
 
     const emailFrom = `${res.locals.secrets.APP_NAME} <${res.locals.secrets.EMAIL_USERNAME}>`;
     const emailTo = user.email;
-    const emailSubject = "Your Activation Link for YOUR APP";
+    const emailSubject = 'Your Activation Link for YOUR APP';
     //get the absolute path to the view template with the file extension specified.
     let emailVerificationPath = path.resolve(
-      "./src/views/email/auth/emailVerification.ejs"
+      './src/views/email/auth/emailVerification.ejs'
     );
     const html = await ejs.renderFile(emailVerificationPath, {
       baseUrl: baseUrl,
-      userId: user._id,
+      userId: user.id,
       secretCode: secretCode,
     });
 
-    //Send Verification Email
     await authRepository.sendEmail(emailFrom, emailTo, emailSubject, html);
 
     return res
       .status(httpStatus.OK)
       .send(
         jsonResponse.success(
-          "Successful, Check Email for Activation Link",
+          'Successful, Check Email for Activation Link',
           user
         )
       );
   } catch (err) {
-    console.log("Error on /api/auth/get-activation-email:: ", err);
+    console.log('Error on /api/auth/get-activation-email:: ', err);
 
     res
       .status(httpStatus.CONFLICT)
-      .send(jsonResponse.error("Error occurred", err));
+      .send(jsonResponse.error('Error occurred', err));
   }
 };
 
-/**
- * User verifies email
- * @param {object} req
- * @param {object} res
- *
- * @returns \json
- */
 const verifyAccount = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
+    const user = await authRepository.getUserById(req.params.userId);
 
     if (!user) {
       return res
         .status(httpStatus.NOT_FOUND)
-        .send(jsonResponse.error("User not found"));
+        .send(jsonResponse.error('User not found'));
     }
 
-    const response = await Code.findOne({
-      email: user.email,
-      code: req.params.secretCode,
-    });
+    const response = await authRepository.getCodeByEmailAndCode(user.email, req.params.secretCode);
 
     if (!response) {
       return res
         .status(httpStatus.FORBIDDEN)
         .send(
-          jsonResponse.forbidden("Activation Link is expired or used already")
+          jsonResponse.forbidden('Activation Link is expired or used already')
         );
     }
-    const activateUser = await User.updateOne(
-      { email: user.email },
-      { status: "active" }
-    );
-    const deleteUserCode = await Code.deleteMany({ email: user.email });
+    const activateUser = await authRepository.updateUserByEmail(user.email, { status: 'active' });
+    const deleteUserCode = await authRepository.deleteCodeByEmail(user.email);
 
     if (activateUser && deleteUserCode) {
       return res
         .status(httpStatus.OK)
         .send(
-          jsonResponse.success("Account Activated you can proceed to login")
+          jsonResponse.success('Account Activated you can proceed to login')
         );
     }
     return res
       .status(httpStatus.CONFLICT)
-      .send(jsonResponse.error("Something went wrong"));
+      .send(jsonResponse.error('Something went wrong'));
   } catch (err) {
-    console.log("Error on /api/auth/verification/verify-account: ", err);
+    console.log('Error on /api/auth/verification/verify-account: ', err);
     return res
       .status(httpStatus.SERVER_ERROR)
-      .send(jsonResponse.error("Something went wrong"));
+      .send(jsonResponse.error('Something went wrong'));
   }
 };
 
-/**
- * User get Password Reset Code
- * @param {object} req
- * @param {object} res
- *
- * @returns \json
- */
 const passWordResetGetCode = async (req, res) => {
   const { email } = req.body;
-
-  // Validate request
   const { error } = requestValidation.emailValidation(req.body);
 
   if (error) {
@@ -354,7 +327,7 @@ const passWordResetGetCode = async (req, res) => {
       .status(httpStatus.VALIDATION_ERROR)
       .send(
         jsonResponse.failedValidation(
-          "Failed Validation",
+          'Failed Validation',
           error.details[0].message
         )
       );
@@ -362,12 +335,11 @@ const passWordResetGetCode = async (req, res) => {
 
   try {
     const user = await authRepository.getUserByEmail(email);
-
     if (!user) {
       return res
         .status(httpStatus.NOT_FOUND)
         .send(
-          jsonResponse.notFound("The provided email address is not registered!")
+          jsonResponse.notFound('The provided email address is not registered!')
         );
     }
     const secretCode = cryptoRandomString({
@@ -378,15 +350,15 @@ const passWordResetGetCode = async (req, res) => {
       code: secretCode,
       email: email,
     };
-    //Create Code
-    const code = await authRepository.createCode(codePayload);
+
+    await authRepository.createCode(codePayload);
     
     const emailFrom = `${res.locals.secrets.APP_NAME} <${res.locals.secrets.EMAIL_USERNAME}>`;
     const emailTo = email;
-    const emailSubject = "Your Password Reset Code";
+    const emailSubject = 'Your Password Reset Code';
     //get the absolute path to the view template with the file extension specified.
     let passwordResetEmailPath = path.resolve(
-      "./src/views/email/auth/passwordResetVerification.ejs"
+      './src/views/email/auth/passwordResetVerification.ejs'
     );
     const html = await ejs.renderFile(passwordResetEmailPath, {
       username: user.firstName,
@@ -400,24 +372,17 @@ const passWordResetGetCode = async (req, res) => {
       .status(httpStatus.OK)
       .send(
         jsonResponse.success(
-          "Password reset code Sent to your registered email"
+          'Password reset code Sent to your registered email'
         )
       );
   } catch (err) {
-    console.log("Error on /api/auth/password-reset/get-code: ", err);
+    console.log('Error on /api/auth/password-reset/get-code: ', err);
     return res
       .status(httpStatus.SERVER_ERROR)
-      .send(jsonResponse.error("Something went wrong. Please try again!"));
+      .send(jsonResponse.error('Something went wrong. Please try again!'));
   }
 };
 
-/**
- * User Reset Password
- * @param {object} req
- * @param {object} res
- *
- * @returns \json
- */
 const passWordResetVerify = async (req, res) => {
   const { email, password, code } = req.body;
   // Validate request
@@ -428,7 +393,7 @@ const passWordResetVerify = async (req, res) => {
       .status(httpStatus.VALIDATION_ERROR)
       .send(
         jsonResponse.failedValidation(
-          "Failed Validation",
+          'Failed Validation',
           error.details[0].message
         )
       );
@@ -441,7 +406,7 @@ const passWordResetVerify = async (req, res) => {
       .status(httpStatus.VALIDATION_ERROR)
       .send(
         jsonResponse.failedValidation(
-          "Your password must be at least 6 characters long and contain a lowercase letter, an uppercase letter, a numeric digit and a special character."
+          'Your password must be at least 6 characters long and contain a lowercase letter, an uppercase letter, a numeric digit and a special character.'
         )
       );
   }
@@ -452,58 +417,43 @@ const passWordResetVerify = async (req, res) => {
       return res
         .status(httpStatus.NOT_FOUND)
         .send(
-          jsonResponse.notFound("The provided email address is not registered!")
+          jsonResponse.notFound('The provided email address is not registered!')
         );
     }
 
-    const response = await Code.findOne({ email, code });
+    const response = await authRepository.getCodeByEmailAndCode(email, code);
 
     if (!response) {
       return res
         .status(httpStatus.NOT_FOUND)
         .send(
           jsonResponse.notFound(
-            "The entered code is not correct. Please make sure to enter the code in the requested time interval."
+            'The entered code is not correct. Please make sure to enter the code in the requested time interval.'
           )
         );
     }
     //Hash Password
     const newHashedPassword = await authRepository.hashPassword(password);
-
-    await User.updateOne({ email }, { password: newHashedPassword });
-    await Code.deleteOne({ email, code });
-
+    await authRepository.updateUserPasswordByEmail(email, newHashedPassword);
+    await authRepository.deleteCodeByEmailAndCode(email, code);
+  
     return res
       .status(httpStatus.OK)
-      .send(jsonResponse.success("Password updated Successfully"));
+      .send(jsonResponse.success('Password updated Successfully'));
   } catch (err) {
-    console.log("Error on /api/auth/password-reset/verify: ", err);
+    console.log('Error on /api/auth/password-reset/verify: ', err);
 
     return res
       .status(httpStatus.SERVER_ERROR)
-      .send(jsonResponse.error("Something went wrong. Please try again!"));
+      .send(jsonResponse.error('Something went wrong. Please try again!'));
   }
 };
 
-/**
- * User Logout
- * @param {object} req
- * @param {object} res
- *
- * @returns \json
- */
 const logout = async (req, res) => {
   req.session = null;
-  res.status(httpStatus.OK).send(jsonResponse.success("Logout Successfully"));
+  res.status(httpStatus.OK).send(jsonResponse.success('Logout Successfully'));
 };
 
-/**
- * User Delete Account
- * @param {object} req
- * @param {object} res
- *
- * @returns \json
- */
 const deleteAccount = async (req, res) => {
   const { password } = req.body;
   const user_id = req.user._id;
@@ -511,10 +461,13 @@ const deleteAccount = async (req, res) => {
   //Request Validation
   const { error } = requestValidation.passwordValidation(req.body);
 
+  console.log(8888)
+  console.log(error)
+
   if (error) {
     return res
       .status(httpStatus.VALIDATION_ERROR)
-      .send(jsonResponse.failedValidation("Failed Validation", error));
+      .send(jsonResponse.failedValidation('Failed Validation', error));
   }
 
   try {
@@ -524,7 +477,7 @@ const deleteAccount = async (req, res) => {
       return res
         .status(httpStatus.NOT_FOUND)
         .send(
-          jsonResponse.notFound("User not found", error.details[0].message)
+          jsonResponse.notFound('User not found', error.details[0].message)
         );
     }
     const passwordCheckSuccess = await authRepository.validPassword(
@@ -535,21 +488,20 @@ const deleteAccount = async (req, res) => {
     if (!passwordCheckSuccess) {
       return res
         .status(httpStatus.CONFLICT)
-        .send(jsonResponse.error("The provided password is not correct"));
+        .send(jsonResponse.error('The provided password is not correct'));
     }
-    const deletedUser = await User.deleteOne({
-      email: user.email,
-    });
-
+    
+    await authRepository.deleteUserByEmail(user.email)
+    
     return res
       .status(httpStatus.OK)
-      .send(jsonResponse.success("Account deleted Successfully"));
+      .send(jsonResponse.success('Account deleted Successfully'));
   } catch (err) {
-    console.log("Error on /api/auth/delete-account: ", err);
+    console.log('Error on /api/auth/delete-account: ', err);
 
     return res
       .status(httpStatus.SERVER_ERROR)
-      .send(jsonResponse.error("Something went wrong. Please try again!"));
+      .send(jsonResponse.error('Something went wrong. Please try again!'));
   }
 };
 
